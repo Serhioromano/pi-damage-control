@@ -1,1 +1,1 @@
-- after apdate to any `*.ts` file, update `README.md` and `CHANGELOG.md`
+- after apdate to any `*.ts` file, update `README.md` and `CHANGELOG.md` and `AGENTS.md`

@@ -10,7 +10,6 @@ import { parse as parseYaml } from "yaml";
 export interface BashPattern {
   pattern: string;
   reason: string;
-  ask?: boolean;
 }
 
 export interface Config {
@@ -89,9 +88,19 @@ function getConfigPaths(cwd: string): string[] {
 
   // 1. Project-local config (.pi/defender/patterns.yaml)
   paths.push(join(cwd, ".pi", "defender", "patterns.yaml"));
+  paths.push(join(cwd, ".pi", "pi-defender", "patterns.yaml"));
 
   // 2. Global user config (~/.pi/defender/patterns.yaml)
   paths.push(join(homedir(), ".pi", "defender", "patterns.yaml"));
+  paths.push(join(homedir(), ".pi", "pi-defender", "patterns.yaml"));
+
+  // 3. Bundled defaults shipped with the package
+  // @ts-ignore — __dirname is CJS global
+  if (typeof __dirname !== "undefined") {
+    paths.push(join(__dirname, "patterns.yaml"));
+  }
+  paths.push(join(cwd, "src", "patterns.yaml"));
+  paths.push(join(cwd, "node_modules", "pi-defender", "src", "patterns.yaml"));
 
   return paths;
 }
@@ -219,7 +228,6 @@ function fnmatch(name: string, pattern: string): boolean {
 
 export interface CheckResult {
   blocked: boolean;
-  ask: boolean;
   reason: string;
 }
 
@@ -279,14 +287,11 @@ export function checkPathPatterns(
 
 export function checkCommand(command: string, config: Config): CheckResult {
   // 1. Check against patterns from YAML (may block or ask)
-  for (const { pattern, reason, ask: shouldAsk } of config.bashToolPatterns) {
+  for (const { pattern, reason } of config.bashToolPatterns) {
     try {
       const regex = new RegExp(pattern, "i");
       if (regex.test(command)) {
-        if (shouldAsk) {
-          return { blocked: false, ask: true, reason };
-        }
-        return { blocked: true, ask: false, reason: `Blocked: ${reason}` };
+        return { blocked: true,  reason: `Blocked: ${reason}` };
       }
     } catch {
       continue;
@@ -302,7 +307,6 @@ export function checkCommand(command: string, config: Config): CheckResult {
         if (regex.test(command)) {
           return {
             blocked: true,
-            ask: false,
             reason: `Blocked: zero-access pattern ${zeroPath} (no operations allowed)`,
           };
         }
@@ -314,7 +318,6 @@ export function checkCommand(command: string, config: Config): CheckResult {
       if (command.includes(expanded) || command.includes(zeroPath)) {
         return {
           blocked: true,
-          ask: false,
           reason: `Blocked: zero-access path ${zeroPath} (no operations allowed)`,
         };
       }
@@ -325,7 +328,7 @@ export function checkCommand(command: string, config: Config): CheckResult {
   for (const readonlyPath of config.readOnlyPaths) {
     const result = checkPathPatterns(command, readonlyPath, READ_ONLY_BLOCKED, "read-only path");
     if (result.blocked) {
-      return { ...result, ask: false };
+      return { ...result};
     }
   }
 
@@ -333,11 +336,11 @@ export function checkCommand(command: string, config: Config): CheckResult {
   for (const noDeletePath of config.noDeletePaths) {
     const result = checkPathPatterns(command, noDeletePath, NO_DELETE_BLOCKED, "no-delete path");
     if (result.blocked) {
-      return { ...result, ask: false };
+      return { ...result};
     }
   }
 
-  return { blocked: false, ask: false, reason: "" };
+  return { blocked: false,  reason: "" };
 }
 
 // =============================================================================

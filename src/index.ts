@@ -22,62 +22,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
-import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync } from "node:fs";
-import { join } from "node:path";
-import { homedir } from "node:os";
-import { parse as parseYaml } from "yaml";
 import { loadConfig, checkCommand, checkFileAccess, type Config } from "./config";
-
-// =============================================================================
-// BUNDLED DEFAULTS — src/patterns.yaml embedded (always available)
-// =============================================================================
-
-function parseConfigFile(path: string): Config | null {
-  try {
-    const raw = parseYaml(readFileSync(path, "utf-8")) as Record<string, unknown>;
-    return {
-      bashToolPatterns: (raw.bashToolPatterns as Config["bashToolPatterns"]) || [],
-      zeroAccessPaths: (raw.zeroAccessPaths as string[]) || [],
-      readOnlyPaths: (raw.readOnlyPaths as string[]) || [],
-      noDeletePaths: (raw.noDeletePaths as string[]) || [],
-    };
-  } catch {
-    console.error(`[pi-defender] Failed to parse ${path}`);
-    return null;
-  }
-}
-
-function mergeConfigs(...configs: Config[]): Config {
-  return {
-    bashToolPatterns: configs.flatMap(c => c.bashToolPatterns),
-    zeroAccessPaths: configs.flatMap(c => c.zeroAccessPaths),
-    readOnlyPaths: configs.flatMap(c => c.readOnlyPaths),
-    noDeletePaths: configs.flatMap(c => c.noDeletePaths),
-  };
-}
-
-function getBundledDefaults(): Config {
-  const paths = [
-    // @ts-ignore — __dirname is CJS global
-    typeof __dirname !== "undefined" ? join(__dirname, "patterns.yaml") : null,
-    join(process.cwd(), "src", "patterns.yaml"),
-    join(process.cwd(), "node_modules", "pi-defender", "src", "patterns.yaml"),
-  ];
-
-  const configs: Config[] = [];
-  for (const p of paths) {
-    if (p && existsSync(p)) {
-      const parsed = parseConfigFile(p);
-      if (parsed) configs.push(parsed);
-    }
-  }
-
-  if (configs.length === 0) {
-    return { bashToolPatterns: [], zeroAccessPaths: [], readOnlyPaths: [], noDeletePaths: [] };
-  }
-
-  return mergeConfigs(...configs);
-}
 
 // =============================================================================
 // EXTENSION
@@ -93,9 +38,7 @@ export default function (pi: ExtensionAPI) {
 
   function getConfig(cwd: string): Config {
     if (currentConfig) return currentConfig;
-    const loaded = loadConfig(cwd);
-    const defaults = getBundledDefaults();
-    currentConfig = mergeConfigs(defaults, loaded);
+    currentConfig = loadConfig(cwd);
     return currentConfig;
   }
 
@@ -277,6 +220,14 @@ export default function (pi: ExtensionAPI) {
     return "deny";
   }
 
+  pi.on("message_start", async (event, ctx) => {
+    aborted = false;
+  });
+
+  pi.on("message_end", async (event, ctx) => {
+    aborted = false;
+  });
+
   // ===========================================================================
   // TOOL CALL INTERCEPTION — Bash
   // ===========================================================================
@@ -398,33 +349,6 @@ export default function (pi: ExtensionAPI) {
       return undefined;
     }
 
-    // 4. NORMAL MODE — existing behavior
-    if (result.ask) {
-      stats.asked++;
-      if (!ctx.hasUI) {
-        stats.blocked++;
-        ctx.ui.notify(`🛡️ BLOCKED: ${result.reason} (no UI for confirmation)`, "error");
-        return { block: true, reason: `Blocked (no UI): ${result.reason}` };
-      }
-
-      const displayCmd = command.length > 200 ? command.slice(0, 200) + "..." : command;
-      const allowed = await ctx.ui.confirm(
-        "⚠️ Dangerous Command",
-        `Reason: ${result.reason}\n\nCommand: ${displayCmd}\n\nAllow this command?`,
-      );
-
-      if (!allowed) {
-        stats.blocked++;
-        ctx.ui.notify(`🛡️ BLOCKED by user: ${result.reason}`, "warning");
-        return { block: true, reason: `Blocked by user: ${result.reason}` };
-      }
-
-      stats.allowed++;
-      ctx.ui.notify(`⚠️ Allowed by user: ${result.reason}`, "warning");
-    } else {
-      stats.allowed++;
-    }
-
     return undefined;
   });
 
@@ -515,33 +439,6 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  pi.registerCommand("defender:patterns", {
-    description: "Initialize project-local patterns.yaml from bundled defaults",
-    handler: async (_args, ctx) => {
-      const dir = join(ctx.cwd, ".pi", "defender");
-      const file = join(dir, "patterns.yaml");
-
-      if (existsSync(file)) {
-        ctx.ui.notify(`patterns.yaml already exists at ${file}`, "warning");
-        return;
-      }
-
-      const sourcePath = join(__dirname, "patterns.yaml");
-      if (!existsSync(sourcePath)) {
-        ctx.ui.notify("Bundled patterns.yaml not found — using built-in defaults", "warning");
-        // Fallback: write minimal template
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(file, EMBEDDED_YAML, "utf-8");
-        ctx.ui.notify(`✅ Created ${file} from embedded defaults — edit it to customize, then /defender:reload`, "info");
-        return;
-      }
-
-      mkdirSync(dir, { recursive: true });
-      copyFileSync(sourcePath, file);
-      ctx.ui.notify(`✅ Created ${file} from bundled defaults — edit it to customize protection rules, then /defender:reload`, "info");
-    },
-  });
-
   pi.registerCommand("defender:strict", {
     description: "Toggle strict mode — blocks ALL bash commands requiring user approval (on|off, or toggle)",
     handler: async (args, ctx) => {
@@ -608,6 +505,8 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_shutdown", async () => {
     currentConfig = null;
+    aborted = false;
+    approveAllSession = false;
   });
 }
 

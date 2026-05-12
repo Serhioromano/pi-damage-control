@@ -11,7 +11,7 @@
 # BASH TOOL PATTERNS — Matched against Bash tool commands
 # -----------------------------------------------------------------------------
 # Patterns support JS regex syntax. Use \b for word boundaries.
-# Set ask: true to prompt for confirmation instead of blocking.
+# Set to prompt for confirmation instead of blocking.
 # -----------------------------------------------------------------------------
 
 bashToolPatterns:
@@ -42,12 +42,10 @@ bashToolPatterns:
   # === Git force/destructive operations (ask mode) ===
   - pattern: '\bgit\s+push\s+.*--force'
     reason: git push --force
-    ask: true
-
+    
   - pattern: '\bgit\s+push\s+.*--delete\b'
     reason: git push --delete
-    ask: true
-
+    
   - pattern: '\bgit\s+reset\s+--hard\b'
     reason: git reset --hard
 
@@ -74,13 +72,11 @@ bashToolPatterns:
 
   - pattern: '\bdocker\s+system\s+prune\b'
     reason: docker system prune (ask)
-    ask: true
-
+    
   # === Package manager destructive ===
   - pattern: '\bnpm\s+unpublish\b'
     reason: npm unpublish
-    ask: true
-
+    
   # === Permission changes ===
   - pattern: '\bchmod\s+.*777'
     reason: chmod 777 (world-writable)
