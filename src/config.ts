@@ -96,34 +96,46 @@ function getConfigPaths(cwd: string): string[] {
   return paths;
 }
 
+function parseConfigFile(path: string): Config | null {
+  try {
+    const content = readFileSync(path, "utf-8");
+    const raw = parseYaml(content) as Record<string, unknown>;
+    return {
+      bashToolPatterns: (raw.bashToolPatterns as BashPattern[]) || [],
+      zeroAccessPaths: (raw.zeroAccessPaths as string[]) || [],
+      readOnlyPaths: (raw.readOnlyPaths as string[]) || [],
+      noDeletePaths: (raw.noDeletePaths as string[]) || [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mergeConfigs(...configs: Config[]): Config {
+  return {
+    bashToolPatterns: configs.flatMap(c => c.bashToolPatterns),
+    zeroAccessPaths: configs.flatMap(c => c.zeroAccessPaths),
+    readOnlyPaths: configs.flatMap(c => c.readOnlyPaths),
+    noDeletePaths: configs.flatMap(c => c.noDeletePaths),
+  };
+}
+
 export function loadConfig(cwd: string): Config {
   const configPaths = getConfigPaths(cwd);
+  const configs: Config[] = [];
 
   for (const configPath of configPaths) {
     if (existsSync(configPath)) {
-      try {
-        const content = readFileSync(configPath, "utf-8");
-        const raw = parseYaml(content) as Record<string, unknown>;
-
-        return {
-          bashToolPatterns: (raw.bashToolPatterns as BashPattern[]) || [],
-          zeroAccessPaths: (raw.zeroAccessPaths as string[]) || [],
-          readOnlyPaths: (raw.readOnlyPaths as string[]) || [],
-          noDeletePaths: (raw.noDeletePaths as string[]) || [],
-        };
-      } catch {
-        // Continue to next fallback
-      }
+      const parsed = parseConfigFile(configPath);
+      if (parsed) configs.push(parsed);
     }
   }
 
-  // No config found — return empty (permissive)
-  return {
-    bashToolPatterns: [],
-    zeroAccessPaths: [],
-    readOnlyPaths: [],
-    noDeletePaths: [],
-  };
+  if (configs.length === 0) {
+    return { bashToolPatterns: [], zeroAccessPaths: [], readOnlyPaths: [], noDeletePaths: [] };
+  }
+
+  return mergeConfigs(...configs);
 }
 
 // =============================================================================

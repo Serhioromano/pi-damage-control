@@ -23,84 +23,60 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join } from "node:path";
 import { homedir } from "node:os";
 import { parse as parseYaml } from "yaml";
 import { loadConfig, checkCommand, checkFileAccess, type Config } from "./config";
 
 // =============================================================================
-// BUNDLED DEFAULTS — loaded from src/patterns.yaml (single source of truth)
+// BUNDLED DEFAULTS — src/patterns.yaml embedded (always available)
 // =============================================================================
 
-function resolveBundledYamlPath(): string | null {
-  // Try __dirname (CommonJS — available in Pi's TS runtime)
+function parseConfigFile(path: string): Config | null {
   try {
-    // @ts-ignore — __dirname is a CJS global
-    const dir = __dirname;
-    if (dir) {
-      const p = join(dir, "patterns.yaml");
-      if (existsSync(p)) return p;
-    }
-  } catch { /* not CJS */ }
-
-  // Try import.meta.url (ESM)
-  try {
-    const { fileURLToPath } = require("node:url");
-    // @ts-ignore — import.meta is ESM-only
-    const p = join(dirname(fileURLToPath(import.meta.url)), "patterns.yaml");
-    if (existsSync(p)) return p;
-  } catch { /* not ESM */ }
-
-  // Try cwd-relative (dev mode: running pi from project root)
-  const cwdPath = join(process.cwd(), "src", "patterns.yaml");
-  if (existsSync(cwdPath)) return cwdPath;
-
-  // Try npm-installed path
-  const npmPath = join(process.cwd(), "node_modules", "pi-defender", "src", "patterns.yaml");
-  if (existsSync(npmPath)) return npmPath;
-
-  // Try global Pi extensions dir
-  try {
-    const piExtPath = join(homedir(), ".pi", "agent", "extensions", "pi-defender", "src", "patterns.yaml");
-    if (existsSync(piExtPath)) return piExtPath;
-  } catch { /* not found */ }
-
-  return null;
+    const raw = parseYaml(readFileSync(path, "utf-8")) as Record<string, unknown>;
+    return {
+      bashToolPatterns: (raw.bashToolPatterns as Config["bashToolPatterns"]) || [],
+      zeroAccessPaths: (raw.zeroAccessPaths as string[]) || [],
+      readOnlyPaths: (raw.readOnlyPaths as string[]) || [],
+      noDeletePaths: (raw.noDeletePaths as string[]) || [],
+    };
+  } catch {
+    console.error(`[pi-defender] Failed to parse ${path}`);
+    return null;
+  }
 }
 
-// Minimal inline fallback — critical patterns that must always be caught
-const HARD_FALLBACK_PATTERNS = [
-  { pattern: "\\brm\\s+-[rRf]", reason: "rm with recursive or force flags" },
-  { pattern: "\\bsudo\\b", reason: "sudo command execution" },
-  { pattern: "\\bcurl\\s+.*\\|\\s*(ba)?sh", reason: "curl piped to bash" },
-  { pattern: "\\bgit\\s+push\\s+.*--force", reason: "git push --force", ask: true },
-];
+function mergeConfigs(...configs: Config[]): Config {
+  return {
+    bashToolPatterns: configs.flatMap(c => c.bashToolPatterns),
+    zeroAccessPaths: configs.flatMap(c => c.zeroAccessPaths),
+    readOnlyPaths: configs.flatMap(c => c.readOnlyPaths),
+    noDeletePaths: configs.flatMap(c => c.noDeletePaths),
+  };
+}
 
 function getBundledDefaults(): Config {
-  const bundledPath = resolveBundledYamlPath();
+  const paths = [
+    // @ts-ignore — __dirname is CJS global
+    typeof __dirname !== "undefined" ? join(__dirname, "patterns.yaml") : null,
+    join(process.cwd(), "src", "patterns.yaml"),
+    join(process.cwd(), "node_modules", "pi-defender", "src", "patterns.yaml"),
+  ];
 
-  if (bundledPath) {
-    try {
-      const raw = parseYaml(readFileSync(bundledPath, "utf-8")) as Record<string, unknown>;
-      return {
-        bashToolPatterns: (raw.bashToolPatterns as Config["bashToolPatterns"]) || [],
-        zeroAccessPaths: (raw.zeroAccessPaths as string[]) || [],
-        readOnlyPaths: (raw.readOnlyPaths as string[]) || [],
-        noDeletePaths: (raw.noDeletePaths as string[]) || [],
-      };
-    } catch {
-      console.error(`[pi-defender] Failed to parse bundled YAML at ${bundledPath}`);
+  const configs: Config[] = [];
+  for (const p of paths) {
+    if (p && existsSync(p)) {
+      const parsed = parseConfigFile(p);
+      if (parsed) configs.push(parsed);
     }
-  } else {
-    console.error("[pi-defender] Bundled patterns.yaml not found — using hard fallback (4 critical patterns only)");
   }
 
-  return {
-    bashToolPatterns: HARD_FALLBACK_PATTERNS,
-    zeroAccessPaths: [],
-    readOnlyPaths: [],
-    noDeletePaths: [],
-  };
+  if (configs.length === 0) {
+    return { bashToolPatterns: [], zeroAccessPaths: [], readOnlyPaths: [], noDeletePaths: [] };
+  }
+
+  return mergeConfigs(...configs);
 }
 
 // =============================================================================
@@ -118,14 +94,8 @@ export default function (pi: ExtensionAPI) {
   function getConfig(cwd: string): Config {
     if (currentConfig) return currentConfig;
     const loaded = loadConfig(cwd);
-    // Merge with bundled defaults: user config takes precedence, defaults fill gaps
     const defaults = getBundledDefaults();
-    currentConfig = {
-      bashToolPatterns: loaded.bashToolPatterns.length > 0 ? loaded.bashToolPatterns : defaults.bashToolPatterns,
-      zeroAccessPaths: loaded.zeroAccessPaths.length > 0 ? loaded.zeroAccessPaths : defaults.zeroAccessPaths,
-      readOnlyPaths: loaded.readOnlyPaths.length > 0 ? loaded.readOnlyPaths : defaults.readOnlyPaths,
-      noDeletePaths: loaded.noDeletePaths.length > 0 ? loaded.noDeletePaths : defaults.noDeletePaths,
-    };
+    currentConfig = mergeConfigs(defaults, loaded);
     return currentConfig;
   }
 
@@ -185,7 +155,7 @@ export default function (pi: ExtensionAPI) {
 
             return {
               render,
-              invalidate: () => {},
+              invalidate: () => { },
               handleInput: (data: string) => {
                 if (data === "\x1b[A" || data === "k") {
                   selectedIndex = (selectedIndex - 1 + options.length) % options.length;
@@ -265,7 +235,7 @@ export default function (pi: ExtensionAPI) {
 
             return {
               render,
-              invalidate: () => {},
+              invalidate: () => { },
               handleInput: (data: string) => {
                 if (data === "\x1b[A" || data === "k") {
                   selectedIndex = (selectedIndex - 1 + options.length) % options.length;
@@ -561,8 +531,8 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify("Bundled patterns.yaml not found — using built-in defaults", "warning");
         // Fallback: write minimal template
         mkdirSync(dir, { recursive: true });
-        writeFileSync(file, PATTERNS_YAML_TEMPLATE, "utf-8");
-        ctx.ui.notify(`✅ Created ${file} from minimal template — edit it to customize, then /defender:reload`, "info");
+        writeFileSync(file, EMBEDDED_YAML, "utf-8");
+        ctx.ui.notify(`✅ Created ${file} from embedded defaults — edit it to customize, then /defender:reload`, "info");
         return;
       }
 
@@ -645,47 +615,3 @@ export default function (pi: ExtensionAPI) {
 // PATTERNS YAML TEMPLATE
 // =============================================================================
 
-const PATTERNS_YAML_TEMPLATE = `# Pi Defender — Security Patterns
-# =============================================================
-# Edit this file to customize which operations are blocked.
-#
-# bashToolPatterns: regex patterns matched against Bash commands
-#   - pattern: JS regex (case-insensitive)
-#   - reason: explanation shown when blocked
-#   - ask: true → prompt for confirmation instead of blocking
-#
-# zeroAccessPaths: no read/write/delete allowed (secrets)
-# readOnlyPaths:   read allowed, write/edit/delete blocked
-# noDeletePaths:   read/write/edit allowed, delete blocked
-#
-# Supports: literal paths (~/.ssh/, /etc/) and globs (*.pem, *.lock)
-
-bashToolPatterns:
-  - pattern: '\\brm\\s+-[rRf]'
-    reason: rm with recursive or force flags
-
-  - pattern: '\\bsudo\\b'
-    reason: sudo command execution
-
-  - pattern: '\\bgit\\s+push\\s+.*--force'
-    reason: git push --force
-    ask: true
-
-  - pattern: '\\bcurl\\s+.*\\|\\s*(ba)?sh'
-    reason: curl piped to bash
-
-zeroAccessPaths:
-  - ~/.ssh/
-  - *.pem
-  - .env.production.local
-
-readOnlyPaths:
-  - /etc/
-  - *.lock
-  - ~/.bashrc
-
-noDeletePaths:
-  - .pi/
-  - LICENSE
-  - README.md
-`;
