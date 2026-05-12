@@ -1,17 +1,22 @@
 # Pi Defender 🛡️
 
-> Inspired by [disler/claude-code-damage-control](https://github.com/disler/claude-code-damage-control)!
+> [!WARNING]
+> Author of this extension does not hold any liability for any damage done to your work, while using this extension!!
+
 
 Defense-in-depth protection for [Pi](https://github.com/badlogic/pi-mono) coding agent. Blocks dangerous commands and protects sensitive files — a Pi port of [claude-code-damage-control](https://github.com/disler/claude-code-damage-control). Previously published as `pi-damage-control`.
 
 <img width="800" alt="Pi Defender" src="https://raw.githubusercontent.com/Serhioromano/pi-defender/refs/heads/master/images/pi-defender.png">
+
+> Inspired by [disler/claude-code-damage-control](https://github.com/disler/claude-code-damage-control)!
+
 
 ## Features
 
 ### 🔒 Bash Command Protection
 Regex patterns to block dangerous commands before execution. Instead of auto-blocking, shows a selector:
 - ⚠️ **Allow anyway** — run the dangerous command despite the warning
-- ❌ **Deny & Abort** — stop the entire prompt, all future bash blocked until reset
+- ❌ **Deny & Abort** — cancels the agent's turn immediately + blocks all bash and file writes until reset
 
 | Category | Examples |
 |----------|----------|
@@ -220,7 +225,8 @@ Or toggle without a parameter:
 
 ### Bash commands matching patterns.yaml:
 - Instead of auto-blocking, shows a **selector**: ⚠️ Allow anyway / ❌ Deny & Abort
-- Deny stops the entire prompt — all future bash blocked until `/defender:strict off`
+- **Deny cancels the agent's turn** via `ctx.abort()` — the agent cannot try alternative approaches
+- All future bash + file writes/edits blocked until `/defender:strict off`
 - Patterns checked: `bashToolPatterns` regex matches, `zeroAccessPaths` references, `readOnlyPaths`/`noDeletePaths` operations
 
 ### Bash commands referencing paths:

@@ -271,6 +271,8 @@ export default function (pi: ExtensionAPI) {
           `🛡️❌ Denied & Aborted — patterns.yaml: ${result.reason}. Use /defender:strict off to reset.`,
           "error",
         );
+        // Cancel the agent's turn to prevent it from trying alternative approaches
+        ctx.abort?.();
         return { block: true, reason: `Denied by user (patterns.yaml: ${result.reason}) — execution aborted` };
       }
 
@@ -290,6 +292,7 @@ export default function (pi: ExtensionAPI) {
         `🛡️❌ Execution ABORTED by user — all bash commands blocked. Use /defender:strict off to reset.`,
         "error",
       );
+      ctx.abort?.();
       return { block: true, reason: "Execution aborted by user — use /defender:strict off to reset" };
     }
 
@@ -328,6 +331,8 @@ export default function (pi: ExtensionAPI) {
           `🛡️❌ Execution ABORTED by user — all bash commands now blocked. Use /defender:strict off to reset.`,
           "error",
         );
+        // Cancel the agent's turn to prevent it from trying alternative approaches
+        ctx.abort?.();
         return { block: true, reason: "Execution aborted by user — use /defender:strict off to reset" };
       }
 
@@ -358,6 +363,15 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("tool_call", async (event, ctx) => {
     if (event.toolName !== "write" && event.toolName !== "edit") return undefined;
+
+    // Block all file writes/edits when execution is aborted
+    if (aborted) {
+      ctx.ui.notify(
+        `🛡️❌ Execution ABORTED — file operations blocked. Use /defender:strict off to reset.`,
+        "error",
+      );
+      return { block: true, reason: "Execution aborted — use /defender:strict off to reset" };
+    }
 
     const path = event.input.path as string;
     if (!path) return undefined;

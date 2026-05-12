@@ -4,6 +4,12 @@ All notable changes to Pi Defender will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **Deny/Abort now truly stops execution**: When user selects "Deny" on a patterns.yaml block or "Abort" in strict mode, `ctx.abort()` is now called to cancel the agent's turn, preventing it from trying alternative approaches (different bash commands, Write/Edit bypasses, etc.). Previously only future bash commands were blocked, but the agent could still use Write/Edit/Read tools or try different bash commands in the same reasoning loop.
+- **Write/Edit blocked during abort state**: The Write/Edit tool handler now checks the `aborted` flag and blocks all file operations when execution is aborted. Previously the abort state only affected bash commands, allowing the agent to bypass via Write/Edit.
+
+## [1.0.6]
+
 ### Added
 - **Auto-deploy of bundled defaults**: On first session start, the default `patterns.yaml` is automatically written to `~/.pi/pi-defender/patterns.yaml` if it doesn't already exist. This ensures the bundled patterns are always discoverable, solving the `dist/` compilation issue where `src/patterns.yaml` was not copied to the output directory.
 - Embedded `DEFAULT_PATTERNS_YAML` constant in `config.ts` — the full default patterns live in code as a template literal, eliminating runtime dependency on finding the YAML file on disk.

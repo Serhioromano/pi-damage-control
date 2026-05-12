@@ -39,8 +39,11 @@ is not copied by tsc.
 ```
 pi.on("tool_call") 3 handlers registered:
   1. Bash handler     → checkCommand() → pattern check → strict mode → normal
+                         Deny/Abort calls ctx.abort() to cancel agent's turn
   2. Write/Edit handler → checkFileAccess() → path-based block
+                         Also checks aborted flag — blocks when aborted
   3. Read handler       → checkFileAccess() → path-based block (zeroAccess only)
+                         Reads allowed during abort for diagnostics
 
 pi.on("session_start") → shows "Defender active" notification
 pi.on("session_shutdown") → clears cached config
@@ -69,13 +72,14 @@ Returns `{ blocked, reason }`. Path-based checks return `{ blocked, reason }`.
 ```
 1. patterns.yaml BLOCKED → patternBlockedPrompt() selector: ⚠️ Allow / ❌ Deny & Abort
    - Allow → returns undefined (command runs), skips remaining tiers
-   - Deny → sets aborted=true, blocks everything until /defender:strict off
+   - Deny → calls ctx.abort() to cancel agent's turn + sets aborted=true
 
 2. ABORTED STATE → blocks all bash with 🛡️❌ message
+   - Also blocks Write/Edit tools (separate handler checks aborted flag)
 
 3. STRICT MODE → strictModePrompt() selector: ✅ Approve / ⚠️ Deny / ⭐ Approve All / ❌ Abort
    - approveAllSession flag auto-approves safe commands
-   - Abort sets aborted=true
+   - Abort → calls ctx.abort() + sets aborted=true
 
 4. NORMAL MODE → existing ask/allow behavior
 ```
