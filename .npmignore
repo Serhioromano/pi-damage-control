@@ -3,10 +3,12 @@
 
 # Pi session artifacts
 pi-session-*.html
-
-# Legacy image
-pi-damage-control.png
-images/pi-damage-control.png
+AGENTS.md
+CHANGELOG.md
+Makefile
+README.md
+LICENSE
+PROMPT.md
 
 # Git
 .git/

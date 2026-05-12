@@ -20,12 +20,24 @@ src/
 All `patterns.yaml` files from every location are found, parsed, and merged together
 (arrays are concatenated). No single file overrides another — all contribute.
 
+On first session start, `ensureGlobalConfig()` deploys the bundled defaults to
+`~/.pi/pi-defender/patterns.yaml` if it doesn't already exist (idempotent).
+The bundled defaults are embedded as a `DEFAULT_PATTERNS_YAML` template literal in
+`config.ts` — this avoids the `dist/` compilation issue where `src/patterns.yaml`
+is not copied by tsc.
+
 ```
-__dirname/patterns.yaml ───────────┐
-cwd/src/patterns.yaml ─────────────┤
-node_modules/pi-defender/... ──────┼──→ config.ts:loadConfig(cwd) ──→ getConfig()
-.pi/defender/patterns.yaml ────────┤   (all found, merged together)
-~/.pi/defender/patterns.yaml ──────┘
+~/.pi/pi-defender/patterns.yaml ────┐
+~/.pi/defender/patterns.yaml ───────┤
+.pi/defender/patterns.yaml ─────────┤
+.pi/pi-defender/patterns.yaml ──────┤
+__dirname/patterns.yaml ────────────┤
+__dirname/../src/patterns.yaml ─────┤
+cwd/src/patterns.yaml ──────────────┤
+cwd/node_modules/pi-defender/... ───┤
+                                    │
+                                    └──→ config.ts:loadConfig(cwd) ──→ getConfig()
+                                         (all found, merged together)
 ```
 
 ### Event flow

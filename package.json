@@ -5,6 +5,9 @@
   "license": "MIT",
   "author": "Serhioromano",
   "repository": "github:Serhioromano/pi-defender",
+  "scripts": {
+    "postinstall": ""
+  },
   "keywords": [
     "pi",
     "pi-extension",

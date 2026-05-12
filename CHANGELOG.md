@@ -5,6 +5,10 @@ All notable changes to Pi Defender will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Auto-deploy of bundled defaults**: On first session start, the default `patterns.yaml` is automatically written to `~/.pi/pi-defender/patterns.yaml` if it doesn't already exist. This ensures the bundled patterns are always discoverable, solving the `dist/` compilation issue where `src/patterns.yaml` was not copied to the output directory.
+- Embedded `DEFAULT_PATTERNS_YAML` constant in `config.ts` — the full default patterns live in code as a template literal, eliminating runtime dependency on finding the YAML file on disk.
+- New `ensureGlobalConfig()` function in `config.ts` that idempotently deploys defaults to `~/.pi/pi-defender/patterns.yaml`.
+- Additional fallback path in `getConfigPaths`: `__dirname/../src/patterns.yaml` (handles compiled `dist/` layout).
 - **Strict Mode** (`/defender:strict`): Block ALL bash tool execution requiring explicit user approval per command
   - Interactive selector UI with 4 options:
     - ✅ **Approve** — run this command once
@@ -20,7 +24,12 @@ All notable changes to Pi Defender will be documented in this file.
 - New stats tracked: `strictApproved`, `strictBlocked`, `strictApprovedAll`
 - `/defender:status` now shows strict mode state, abort state, and per-mode statistics
 
+### Fixed
+- Compilation issue: `patterns.yaml` was not copied to `dist/` by TypeScript (`tsconfig.json` only includes `*.ts` files). The `__dirname`-based path resolution would fail at runtime because `__dirname` pointed to `dist/` instead of `src/`. Now fixed via the auto-deploy + embedded YAML approach.
+
 ### Changed
+- `import` statement in `index.ts` now imports `ensureGlobalConfig` from `./config`.
+- `session_start` handler now calls `ensureGlobalConfig()` before loading config.
 - **`src/patterns.yaml` is now the single source of truth** for all default patterns
   - Removed hardcoded `DEFAULT_BASH_PATTERNS`, `DEFAULT_ZERO_ACCESS`, etc. from `index.ts`
   - Bundled YAML parsed at init via `getBundledDefaults()` — patterns stay in one place
@@ -30,6 +39,7 @@ All notable changes to Pi Defender will be documented in this file.
   - ❌ **Deny & Abort** — stop entire prompt, lock all future bash until reset
 - Notification messages now explicitly mention "patterns.yaml" as the source of the block
 - Bash tool_call handler restructured with 4-tier logic: patterns → aborted → strict → normal
+- `README.md` Configuration section updated to document auto-deploy behavior and merged config loading.
 
 ## [1.1.0] - 2024
 

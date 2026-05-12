@@ -85,13 +85,19 @@ npm install
 
 ## Configuration
 
-Defender loads configuration in this order:
+Defender loads configuration in this order and merges it:
 
-1. **Project-local**: `.pi/defender/patterns.yaml` *(project root)*
-2. **Global**: `~/.pi/defender/patterns.yaml` *(user home)*
-3. **Bundled defaults**: `src/patterns.yaml` *(shipped with the extension)*
-
-First match wins. If project config exists, global and bundled are ignored.
+```
+~/.pi/extensions/defender/patterns.yaml     # Global config (auto-deployed on first load)
+~/.pi/defender/patterns.yaml                # Global config (auto-deployed on first load)
+~/.pi/extensions/pi-defender/patterns.yaml  # Global config (auto-deployed on first load)
+~/.pi/pi-defender/patterns.yaml             # Global config (auto-deployed on first load)
+.pi/extensions/defender/patterns.yaml       # Project config
+.pi/defender/patterns.yaml                  # Project config (alternate name)
+.pi/extensions/pi-defender/patterns.yaml    # Project config (alternate name)
+.pi/pi-defender/patterns.yaml               # Project config (alternate name)
+.pi/patterns.yaml                           # Project config (alternate name)
+```
 
 ### Initialize project config
 

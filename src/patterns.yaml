@@ -109,17 +109,17 @@ zeroAccessPaths:
   - ~/.npmrc
   - ~/.git-credentials
   - ~/.gitconfig
-  - *.pem
-  - *.key
-  - *.p12
-  - *.pfx
+  - "*.pem"
+  - "*.key"
+  - "*.p12"
+  - "*.pfx"
   - id_rsa
   - id_ed25519
   - id_ecdsa
-  - *.env.private
-  - *-credentials.json
-  - *-secrets.yaml
-  - *-secrets.yml
+  - "*.env.private"
+  - "*-credentials.json"
+  - "*-secrets.yaml"
+  - "*-secrets.yml"
   - secrets.yml
   - secrets.yaml
   - .env.production.local
@@ -144,7 +144,7 @@ readOnlyPaths:
   - ~/.profile
   - ~/.bash_profile
   - ~/.zprofile
-  - *.lock
+  - "*.lock"
   - package-lock.json
   - yarn.lock
   - pnpm-lock.yaml
@@ -154,8 +154,8 @@ readOnlyPaths:
   - poetry.lock
   - Pipfile.lock
   - go.sum
-  - *.min.js
-  - *.min.css
+  - "*.min.js"
+  - "*.min.css"
 
 # -----------------------------------------------------------------------------
 # NO-DELETE PATHS — Can read/write/edit, but not delete
