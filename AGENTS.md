@@ -45,7 +45,7 @@ pi.on("tool_call") 3 handlers registered:
   3. Read handler       → checkFileAccess() → path-based block (zeroAccess only)
                          Reads allowed during abort for diagnostics
 
-pi.on("session_start") → shows "Defender active" notification
+pi.on("session_start") → shows "Defender vX.Y.Z active" notification
 pi.on("session_shutdown") → clears cached config
 ```
 

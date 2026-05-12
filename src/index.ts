@@ -24,6 +24,17 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 import { loadConfig, checkCommand, checkFileAccess, checkWhitelist, generateWhitelistPattern, addPatternToWhitelist, type Config } from "./config";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// @ts-ignore — __dirname is CJS global made available by the runtime
+const DEFENDER_VERSION: string = (() => {
+  try {
+    return JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf-8")).version;
+  } catch {
+    return "?";
+  }
+})();
 
 // =============================================================================
 // EXTENSION
@@ -50,7 +61,7 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
     const config = getConfig(ctx.cwd);
     ctx.ui.notify(
-      `🛡️ Defender active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
+      `🛡️ Defender v${DEFENDER_VERSION} active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
       "info",
     );
   });
@@ -240,7 +251,7 @@ export default function (pi: ExtensionAPI) {
       needsInitNotify = false;
       const config = getConfig(ctx.cwd);
       ctx.ui.notify(
-        `🛡️ Defender active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
+        `🛡️ Defender v${DEFENDER_VERSION} active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
         "info",
       );
     }
@@ -484,7 +495,7 @@ export default function (pi: ExtensionAPI) {
       currentConfig = null;
       const config = getConfig(ctx.cwd);
       ctx.ui.notify(
-        `🛡️ Defender active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
+        `🛡️ Defender v${DEFENDER_VERSION} active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
         "info",
       );
     },
