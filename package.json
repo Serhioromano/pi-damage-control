@@ -20,5 +20,9 @@
     "extensions": [
       "./src/index.ts"
     ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@types/node": "^25.7.0"
   }
 }

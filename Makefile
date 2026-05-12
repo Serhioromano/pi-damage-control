@@ -1,4 +1,4 @@
-.PHONY: publish
+.PHONY: publish test
 
 # Publish a new version to npm.
 #   1. Checks if logged in to npm (npm whoami), runs npm login if not.
@@ -25,7 +25,7 @@ publish:
 	@if ! git diff --quiet --exit-code || ! git diff --cached --quiet --exit-code; then \
 		echo "📦 Uncommitted changes found. Committing..."; \
 		git add -A; \
-		git commit -m "Prepare for new version"; \
+		git commit -m "Prepare for new version $(v)"; \
 	fi
 	@git pull --rebase origin master
 	@git push origin master
@@ -35,3 +35,7 @@ publish:
 	@echo "🚀 Pushed to GitHub"
 	npm publish
 	@echo "🎉 Published! All done."
+
+test:
+	@echo "Running tests..."
+	pi -e src/index.ts

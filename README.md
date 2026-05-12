@@ -35,6 +35,18 @@ Regex patterns to block dangerous commands before execution:
 ### ⚠️ Ask Mode
 For destructive-but-valid commands (`git push --force`, `git push --delete`, `npm unpublish`), instead of blocking outright, the extension shows a confirmation dialog. You decide.
 
+### 🔒 Strict Mode
+Block ALL bash tool execution and require explicit user approval for every command. Perfect when you want to review every action the agent takes.
+
+- **Selector UI**: Arrow-key navigable selector with 4 options per command:
+  - ✅ **Approve** — run this command once
+  - ⚠️ **Deny (try something else)** — block this command, agent can try alternative approach
+  - ⭐ **Approve All Session** — auto-approve all future safe commands (patterns.yaml blocked rules still enforced)
+  - ❌ **Abort (stop all execution)** — block this command AND lock all future bash commands until reset
+- **patterns.yaml always enforced**: Commands matching blocked patterns are never allowed, even with approve-all
+- Toggle with `/defender:strict` (on|off, or no parameter to toggle)
+- Shows 🛡️🔒 badge when active
+
 ### 🎯 Protection targets
 - **Bash tool**: command patterns + path references in commands
 - **Write tool**: path check against zeroAccess and readOnly
@@ -134,6 +146,75 @@ noDeletePaths:
 
 Shows: blocked/allowed/asked counts and active config summary.
 
+## Strict Mode
+
+Strict mode adds an extra layer of protection — **every** bash command must be explicitly approved.
+
+### Activate
+
+```
+/defender:strict on
+```
+
+You'll see: 🛡️🔒 Strict Mode ACTIVATED — ALL bash commands now require your approval
+
+### Workflow
+
+When the agent tries to run a bash command, a selector appears:
+
+```
+────────────────────────────────────────────────
+ 🛡️🔒 Strict Mode — Bash Command
+
+  ls -la /some/path
+
+ ▶ ✅ Approve this command
+   ⚠️ Deny (try something else)
+   ⭐ Approve ALL session (skip future prompts for safe commands)
+   ❌ Abort (stop all execution)
+
+ ↑↓ navigate · enter select · esc deny
+────────────────────────────────────────────────
+```
+
+### Approve All Session
+
+Selecting ⭐ **Approve All Session** auto-approves future bash commands that are not blocked by `patterns.yaml`. Blocked patterns (like `rm -rf`, `sudo`, etc.) are **always** enforced.
+
+### Abort
+
+Selecting ❌ **Abort (stop all execution)** blocks the current command AND locks down all future bash commands. The agent cannot execute any more bash commands until you reset with:
+
+```
+/defender:strict off
+```
+
+This is useful when the agent is going in a wrong direction and you want to stop it completely.
+
+### Deactivate
+
+```
+/defender:strict off
+```
+
+Or toggle without a parameter:
+
+```
+/defender:strict
+```
+
+### Status
+
+`/defender:status` shows strict mode state and per-mode statistics:
+
+```
+🛡️ Defender Stats
+  Allowed: 42 | Blocked: 3 | Asked: 2
+  Strict mode: 🔒 ACTIVE (approve-all session)
+  Strict: 15 approved | 2 blocked | 1 approve-all
+  ...
+```
+
 ## What Gets Blocked
 
 ### Bash commands blocked:
@@ -153,9 +234,10 @@ Shows: blocked/allowed/asked counts and active config summary.
 
 | Command | Description |
 |---------|-------------|
-| `/defender:status` | Show statistics and active config |
+| `/defender:status` | Show statistics, strict mode status, and active config |
 | `/defender:reload` | Reload YAML configuration |
 | `/defender:patterns` | Initialize project-local patterns.yaml |
+| `/defender:strict [on|off]` | Toggle strict mode (blocks all bash, user approval required) |
 
 ## Directory Structure
 
