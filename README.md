@@ -4,7 +4,7 @@
 
 Defense-in-depth protection for [Pi](https://github.com/badlogic/pi-mono) coding agent. Blocks dangerous commands and protects sensitive files — a Pi port of [claude-code-damage-control](https://github.com/disler/claude-code-damage-control). Previously published as `pi-damage-control`.
 
-<img width="800" alt="Pi Defender" src="https://github.com/Serhioromano/pi-defender/raw/main/images/pi-defender.png">
+<img width="800" alt="Pi Defender" src="https://raw.githubusercontent.com/Serhioromano/pi-defender/refs/heads/master/images/pi-defender.png">
 
 ## Features
 
