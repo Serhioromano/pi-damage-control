@@ -1,8 +1,9 @@
 # Pi Defender 🛡️
 
 > [!WARNING]
-> Author of this extension does not hold any liability for any damage done to your work, while using this extension!!
-
+> This extension is provided "as is", without warranty of any kind. The author assumes no liability for damages or data loss resulting from its use. Use at your own risk.
+>
+> For maximum data security, always maintain up-to-date backups of your work.
 
 Defense-in-depth protection for [Pi](https://github.com/badlogic/pi-mono) coding agent. Blocks dangerous commands and protects sensitive files — a Pi port of [claude-code-damage-control](https://github.com/disler/claude-code-damage-control). Previously published as `pi-damage-control`.
 
