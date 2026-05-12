@@ -6,7 +6,7 @@
   "author": "Serhioromano",
   "repository": "github:Serhioromano/pi-defender",
   "scripts": {
-    "postinstall": ""
+    "postinstall": "mkdir -p ~/.pi && cp src/patterns.yaml ~/.pi/"
   },
   "keywords": [
     "pi",

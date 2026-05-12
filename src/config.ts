@@ -86,17 +86,10 @@ export const NO_DELETE_BLOCKED: PatternTuple[] = DELETE_PATTERNS;
 function getConfigPaths(cwd: string): string[] {
   const paths: string[] = [];
 
-  paths.push(join(cwd, ".pi", "extensions", "defender", "patterns.yaml"));
-  paths.push(join(cwd, ".pi", "extensions", "pi-defender", "patterns.yaml"));
-  paths.push(join(cwd, ".pi", "defender", "patterns.yaml"));
-  paths.push(join(cwd, ".pi", "pi-defender", "patterns.yaml"));
   paths.push(join(cwd, ".pi", "patterns.yaml"));
 
   // 2. Global user config (~/.pi/defender/patterns.yaml)
-  paths.push(join(homedir(), ".pi", "extensions", "defender", "patterns.yaml"));
-  paths.push(join(homedir(), ".pi", "extensions", "pi-defender", "patterns.yaml"));
-  paths.push(join(homedir(), ".pi", "defender", "patterns.yaml"));
-  paths.push(join(homedir(), ".pi", "pi-defender", "patterns.yaml"));
+  paths.push(join(homedir(), ".pi", "patterns.yaml"));
   
   // 3. Bundled defaults shipped with the package
   // @ts-ignore — __dirname is CJS global
