@@ -11,6 +11,7 @@
   "keywords": [
     "pi",
     "pi-extension",
+    "pi-package",
     "security",
     "protection",
     "defender",
@@ -22,7 +23,8 @@
   "pi": {
     "extensions": [
       "./src/index.ts"
-    ]
+    ],
+    "image": "images/pi-defender.png",
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.74.0",
