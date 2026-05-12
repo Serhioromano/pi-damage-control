@@ -32,10 +32,55 @@ import { loadConfig, checkCommand, checkFileAccess, type Config } from "./config
 // BUNDLED DEFAULTS — loaded from src/patterns.yaml (single source of truth)
 // =============================================================================
 
-function getBundledDefaults(): Config {
+function resolveBundledYamlPath(): string | null {
+  // Try __dirname (CommonJS — available in Pi's TS runtime)
   try {
-    const bundledPath = join(__dirname, "patterns.yaml");
-    if (existsSync(bundledPath)) {
+    // @ts-ignore — __dirname is a CJS global
+    const dir = __dirname;
+    if (dir) {
+      const p = join(dir, "patterns.yaml");
+      if (existsSync(p)) return p;
+    }
+  } catch { /* not CJS */ }
+
+  // Try import.meta.url (ESM)
+  try {
+    const { fileURLToPath } = require("node:url");
+    // @ts-ignore — import.meta is ESM-only
+    const p = join(dirname(fileURLToPath(import.meta.url)), "patterns.yaml");
+    if (existsSync(p)) return p;
+  } catch { /* not ESM */ }
+
+  // Try cwd-relative (dev mode: running pi from project root)
+  const cwdPath = join(process.cwd(), "src", "patterns.yaml");
+  if (existsSync(cwdPath)) return cwdPath;
+
+  // Try npm-installed path
+  const npmPath = join(process.cwd(), "node_modules", "pi-defender", "src", "patterns.yaml");
+  if (existsSync(npmPath)) return npmPath;
+
+  // Try global Pi extensions dir
+  try {
+    const piExtPath = join(homedir(), ".pi", "agent", "extensions", "pi-defender", "src", "patterns.yaml");
+    if (existsSync(piExtPath)) return piExtPath;
+  } catch { /* not found */ }
+
+  return null;
+}
+
+// Minimal inline fallback — critical patterns that must always be caught
+const HARD_FALLBACK_PATTERNS = [
+  { pattern: "\\brm\\s+-[rRf]", reason: "rm with recursive or force flags" },
+  { pattern: "\\bsudo\\b", reason: "sudo command execution" },
+  { pattern: "\\bcurl\\s+.*\\|\\s*(ba)?sh", reason: "curl piped to bash" },
+  { pattern: "\\bgit\\s+push\\s+.*--force", reason: "git push --force", ask: true },
+];
+
+function getBundledDefaults(): Config {
+  const bundledPath = resolveBundledYamlPath();
+
+  if (bundledPath) {
+    try {
       const raw = parseYaml(readFileSync(bundledPath, "utf-8")) as Record<string, unknown>;
       return {
         bashToolPatterns: (raw.bashToolPatterns as Config["bashToolPatterns"]) || [],
@@ -43,11 +88,19 @@ function getBundledDefaults(): Config {
         readOnlyPaths: (raw.readOnlyPaths as string[]) || [],
         noDeletePaths: (raw.noDeletePaths as string[]) || [],
       };
+    } catch {
+      console.error(`[pi-defender] Failed to parse bundled YAML at ${bundledPath}`);
     }
-  } catch {
-    // Fall through to empty defaults
+  } else {
+    console.error("[pi-defender] Bundled patterns.yaml not found — using hard fallback (4 critical patterns only)");
   }
-  return { bashToolPatterns: [], zeroAccessPaths: [], readOnlyPaths: [], noDeletePaths: [] };
+
+  return {
+    bashToolPatterns: HARD_FALLBACK_PATTERNS,
+    zeroAccessPaths: [],
+    readOnlyPaths: [],
+    noDeletePaths: [],
+  };
 }
 
 // =============================================================================
@@ -60,6 +113,7 @@ export default function (pi: ExtensionAPI) {
   let strictMode = false;
   let approveAllSession = false;
   let aborted = false;
+  let needsInitNotify = true;
 
   function getConfig(cwd: string): Config {
     if (currentConfig) return currentConfig;
@@ -258,6 +312,16 @@ export default function (pi: ExtensionAPI) {
   // ===========================================================================
 
   pi.on("tool_call", async (event, ctx) => {
+    // Show "Defender active" on extension init (covers /reload)
+    if (needsInitNotify) {
+      needsInitNotify = false;
+      const config = getConfig(ctx.cwd);
+      ctx.ui.notify(
+        `🛡️ Defender active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
+        "info",
+      );
+    }
+
     if (!isToolCallEventType("bash", event)) return undefined;
 
     const command = event.input.command;
@@ -475,7 +539,7 @@ export default function (pi: ExtensionAPI) {
       currentConfig = null;
       const config = getConfig(ctx.cwd);
       ctx.ui.notify(
-        `🛡️ Config reloaded: ${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only`,
+        `🛡️ Defender active (${config.bashToolPatterns.length} patterns, ${config.zeroAccessPaths.length} zero-access, ${config.readOnlyPaths.length} read-only)`,
         "info",
       );
     },
