@@ -27,17 +27,11 @@ The bundled defaults are embedded as a `DEFAULT_PATTERNS_YAML` template literal 
 is not copied by tsc.
 
 ```
-~/.pi/pi-defender/patterns.yaml ────┐
-~/.pi/defender/patterns.yaml ───────┤
-.pi/defender/patterns.yaml ─────────┤
-.pi/pi-defender/patterns.yaml ──────┤
-__dirname/patterns.yaml ────────────┤
-__dirname/../src/patterns.yaml ─────┤
-cwd/src/patterns.yaml ──────────────┤
-cwd/node_modules/pi-defender/... ───┤
-                                    │
-                                    └──→ config.ts:loadConfig(cwd) ──→ getConfig()
-                                         (all found, merged together)
+~/.pi/patterns.yaml ────┐
+.pi/patterns.yaml ──────┤
+                        │
+                        └──→ config.ts:loadConfig(cwd) ──→ getConfig()
+                              (all found, merged together)
 ```
 
 ### Event flow
@@ -68,7 +62,7 @@ pi.on("session_shutdown") → clears cached config
 3. Checks if command modifies `readOnlyPaths` (write/edit/delete patterns)
 4. Checks if command deletes `noDeletePaths` (delete patterns only)
 
-Returns `{ blocked, ask, reason }`. Path-based checks return `{ blocked, reason }`.
+Returns `{ blocked, reason }`. Path-based checks return `{ blocked, reason }`.
 
 ### Bash handler tiers (index.ts)
 
@@ -102,19 +96,6 @@ Both fall back to `ctx.ui.confirm()` if custom UI unavailable.
 | `/defender:reload` | Clears cached config, reloads from YAML |
 | `/defender:patterns` | Copies bundled YAML to `.pi/defender/patterns.yaml` |
 | `/defender:strict [on\|off]` | Toggles strict mode, resets approveAll/aborted |
-
-## State
-
-All mutable state is closure-scoped in the extension function:
-
-| Variable | Type | Purpose |
-|---|---|---|
-| `currentConfig` | `Config \| null` | Cached merged config |
-| `stats` | `{ blocked, asked, allowed, strictBlocked, strictApproved, strictApprovedAll }` | Counters |
-| `strictMode` | `boolean` | Strict mode on/off |
-| `approveAllSession` | `boolean` | Auto-approve in strict mode |
-| `aborted` | `boolean` | Lockdown after user abort |
-| `needsInitNotify` | `boolean` | Show "Defender active" on first tool call |
 
 ## When editing patterns
 

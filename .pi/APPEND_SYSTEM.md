@@ -1,1 +1,2 @@
 - after apdate to any `*.ts` file, update `README.md` and `CHANGELOG.md` and `AGENTS.md`
+- Look pi documentaion for best practice
