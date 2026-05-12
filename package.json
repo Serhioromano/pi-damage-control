@@ -1,6 +1,6 @@
 {
   "name": "pi-damage-control",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Defense-in-depth protection for Pi coding agent. Blocks dangerous commands and protects sensitive files.",
   "license": "MIT",
   "author": "Serhioromano",

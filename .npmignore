@@ -1,0 +1,17 @@
+# Pi internal files
+.pi/
+
+# Pi session artifacts
+pi-session-*.html
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI
+.github/
+
+# Dev files
+.mds/
+node_modules/
